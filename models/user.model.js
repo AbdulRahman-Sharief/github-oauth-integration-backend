@@ -16,6 +16,14 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        profileUrl: {
+            type: String,
+            trim: true,
+        },
+        provider: {
+            type: String,
+            trim: true,
+        },
         avatar: {
             type: String,
         },
