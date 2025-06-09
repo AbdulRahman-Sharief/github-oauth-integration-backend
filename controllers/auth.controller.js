@@ -1,5 +1,6 @@
 const passport = require("passport");
 const { redirectToFrontendWithLoginStatus } = require("../helpers/helpers");
+const axios = require("axios");
 
 /**
  * Initiates GitHub OAuth login
