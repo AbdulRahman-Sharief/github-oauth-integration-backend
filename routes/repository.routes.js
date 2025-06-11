@@ -1,9 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { } = require("../controllers/repository.controller");
+const { syncOrgReposWithStats, getAllRepoCommits, getAllRepoPulls, getAllRepoIssues, getAllIssueChangelogs } = require("../controllers/repository.controller");
 
 
-// router.get('/', );
+router.post('/sync', syncOrgReposWithStats);
+router.get('/commits', getAllRepoCommits)
+router.get('/pulls', getAllRepoPulls)
+router.get('/issues/changelogs', getAllIssueChangelogs)
+router.get('/issues', getAllRepoIssues)
 
 
 

@@ -1,36 +1,47 @@
-const axios = require('axios');
+const { Octokit } = require("@octokit/rest");
 const Organization = require('../models/organization.model');
 const User = require("../models/user.model");
 const Repository = require('../models/repository.model');
+const OrganizationMember = require('../models/organizationMember.model');
+// const OrgUser = require('../models/organizationMember.model');
+const createOctokit = (token) => new Octokit({ auth: token });
+const paginate = async (fetchFn, params = {}) => {
+    let results = [];
+    let page = 1;
+
+    while (true) {
+        const { data } = await fetchFn({ ...params, per_page: 100, page });
+        if (data.length === 0) break;
+        results.push(...data);
+        page++;
+    }
+
+    return results;
+};
+
 
 /**
- * Controller to fetch GitHub organizations and store them in the database.
- * @param {import('express').Request} req - Express request object.
- * @param {import('express').Response} res - Express response object.
+ * Controller to fetch GitHub organizations using Octokit and store them in the database.
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
  */
 const getAllOrganizations = async (req, res) => {
     try {
         const { userId } = req.query;
         const user = await User.findById(userId).select('accessToken');
+
         if (!user || !user.accessToken) {
             return res.status(404).json({ message: 'User not found or access token missing' });
         }
 
-        const endpoint = 'https://api.github.com/user/orgs';
-        const token = user.accessToken;
-        console.log(user)
-        const response = await axios.get(endpoint, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/vnd.github+json',
-            },
-        });
+        const octokit = new Octokit({ auth: user.accessToken });
 
-        console.log('Granted Scopes:', response.headers['x-oauth-scopes']);
-        console.log('Organizations:', response.data);
+        const { data: orgs } = await octokit.rest.orgs.listForAuthenticatedUser();
+
+        console.log('Organizations:', orgs);
 
         const organizations = await Organization.insertMany(
-            response.data.map(({ id, login, avatar_url, description, url }) => ({
+            orgs.map(({ id, login, avatar_url, description, url }) => ({
                 githubId: id,
                 login,
                 userId: user._id,
@@ -40,78 +51,146 @@ const getAllOrganizations = async (req, res) => {
             }))
         );
 
-
         res.status(200).json({ organizations });
     } catch (error) {
-        console.error('Failed to fetch organizations:', error?.response?.data || error.message);
+        console.error('Failed to fetch organizations:', error.message);
         res.status(500).json({ message: 'Failed to fetch organizations', error: error.message });
     }
 };
 
 /**
- * Fetch GitHub organization repos and store them in the database.
- * @route GET /api/github/sync-organization-repos
- * @query userId - MongoDB User ID
- * @query organizationId - MongoDB Organization ID
+ * Controller to fetch repositories for an organization using Octokit and store them in the database.
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
  */
 const getAllOrganizationRepositories = async (req, res) => {
     try {
         const { userId, organizationId } = req.query;
-        console.log('Query Params:', req.query);
-        // Validate query params
+
         if (!userId || !organizationId) {
             return res.status(400).json({ message: 'Missing userId or organizationId' });
         }
 
-        // Find user
         const user = await User.findById(userId).select('accessToken');
         if (!user || !user.accessToken) {
-            return res.status(404).json({ message: 'User not found or missing access token' });
+            return res.status(404).json({ message: 'User not found or access token missing' });
         }
 
-        // Find organization
         const organization = await Organization.findById(organizationId);
         if (!organization || !organization.login) {
             return res.status(404).json({ message: 'Organization not found or missing login' });
         }
 
-        // Fetch repos from GitHub API
-        const { data: reposData, headers } = await axios.get(
-            `https://api.github.com/orgs/${organization.login}/repos`,
-            {
-                headers: {
-                    Authorization: `Bearer ${user.accessToken}`,
-                    Accept: 'application/vnd.github+json',
-                },
-            }
-        );
+        const octokit = new Octokit({ auth: user.accessToken });
 
-        console.log('GitHub OAuth Scopes:', headers['x-oauth-scopes']);
-        console.log('Fetched Repositories:', reposData);
+        const repos = [];
+        let page = 1;
 
+        while (true) {
+            const { data } = await octokit.rest.repos.listForOrg({
+                org: organization.login,
+                per_page: 100,
+                page,
+            });
 
-        // Insert repos into DB
-        const repos = await Repository.insertMany(
-            reposData.map(({ id, name, full_name, url, description, visibility }) => ({
+            if (data.length === 0) break;
+
+            repos.push(...data);
+            page++;
+        }
+
+        console.log('Fetched Repositories:', repos.length);
+
+        const insertedRepos = await Repository.insertMany(
+            repos.map(({ id, name, full_name, html_url, description, visibility }) => ({
                 githubId: id,
                 name,
                 fullName: full_name,
                 organizationId: organization._id,
-                url,
+                url: html_url,
                 description,
                 visibility
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
-        return res.status(200).json({ repos });
+        return res.status(200).json({ repos: insertedRepos });
     } catch (error) {
         console.error('Error syncing GitHub repos:', error.message);
-        return res.status(500).json({ message: 'Failed to sync repos', error: error.message });
+        if (error.writeErrors) {
+            const duplicateErrors = error.writeErrors.filter(e => e.code === 11000);
+            console.warn(`Skipped ${duplicateErrors.length} duplicate repositories`);
+        } else {
+            console.error('Error syncing GitHub repos:', error.message);
+            return res.status(500).json({ message: 'Failed to sync repos', error: error.message });
+        }
     }
 };
 
 
+// Get users in an organization
+const getAllOrganizationMembers = async (req, res) => {
+    try {
+        const { userId, organizationId } = req.query;
+        const user = await User.findById(userId).select('accessToken');
+        const organization = await Organization.findById(organizationId);
+
+        if (!user || !organization) {
+            return res.status(404).json({ message: 'User or organization not found' });
+        }
+
+        const octokit = createOctokit(user.accessToken);
+
+        const members = await paginate(octokit.rest.orgs.listMembers, {
+            org: organization.login,
+        });
+        console.log('Fetched Organization Members:', members);
+        /*
+        
+         {
+    login: 'AbdulRahman-Sharief-1',
+    id: 215410755,
+    node_id: 'U_kgDODNboQw',
+    avatar_url: 'https://avatars.githubusercontent.com/u/215410755?v=4',
+    gravatar_id: '',
+    url: 'https://api.github.com/users/AbdulRahman-Sharief-1',
+    html_url: 'https://github.com/AbdulRahman-Sharief-1',
+    followers_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/followers',
+    following_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/following{/other_user}',
+    gists_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/gists{/gist_id}',
+    starred_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/starred{/owner}{/repo}',
+    subscriptions_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/subscriptions',
+    organizations_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/orgs',
+    repos_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/repos',
+    events_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/events{/privacy}',
+    received_events_url: 'https://api.github.com/users/AbdulRahman-Sharief-1/received_events',
+    type: 'User',
+    user_view_type: 'public',
+    site_admin: false
+  }
+        */
+        const saved = await OrganizationMember.insertMany(
+            members.map(({ url, id, login, avatar_url, type }) => ({
+                url,
+                githubId: id,
+                organizationId: organization._id,
+                login,
+                avatar_url,
+                type,
+            }))
+        );
+
+        return res.status(200).json({ users: saved });
+    } catch (error) {
+        console.error('Org users fetch failed:', error.message);
+        res.status(500).json({ message: 'Failed to fetch organization users', error: error.message });
+    }
+};
+
 module.exports = {
     getAllOrganizations,
-    getAllOrganizationRepositories
-}
+    getAllOrganizationRepositories,
+    getAllOrganizationMembers
+};
