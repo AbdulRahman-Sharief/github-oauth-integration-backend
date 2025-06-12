@@ -48,7 +48,10 @@ const getAllOrganizations = async (req, res) => {
                 avatar_url,
                 description,
                 url
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
         res.status(200).json({ organizations });
@@ -179,7 +182,10 @@ const getAllOrganizationMembers = async (req, res) => {
                 login,
                 avatar_url,
                 type,
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
         return res.status(200).json({ users: saved });

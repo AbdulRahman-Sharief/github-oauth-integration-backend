@@ -197,7 +197,10 @@ const getAllRepoCommits = async (req, res) => {
                 committer: committer?.login || null,
                 date: commit.author.date,
                 url
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
         return res.status(200).json({ commits: saved });
@@ -353,7 +356,10 @@ const getAllRepoPulls = async (req, res) => {
                 pullUpdatedAt: updated_at,
                 pullClosedAt: closed_at,
                 pullMergedAt: merged_at
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
         res.status(200).json({ pulls: saved });
@@ -471,7 +477,10 @@ const getAllRepoIssues = async (req, res) => {
                 issueUpdatedAt: updated_at,
                 issueClosedAt: closed_at
 
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
 
         res.status(200).json({ issues: saved });
@@ -548,7 +557,10 @@ const getAllIssueChangelogs = async (req, res) => {
                 event,
                 actor: actor?.login,
                 changeLogCreatedAt: created_at
-            }))
+            })),
+            {
+                ordered: false
+            }
         );
         res.status(200).json({ changelogs: saved });
     } catch (error) {
