@@ -30,7 +30,8 @@ const syncOrgReposWithStats = async (req, res) => {
             return res.status(400).json({ message: 'Invalid request payload' });
         }
 
-        const user = await User.findById(userId).select("accessToken");
+        const user = await User.findById(userId).select("accessToken username");
+        console.log('user:', user);
         if (!user || !user.accessToken) {
             return res.status(404).json({ message: 'User not found or access token missing' });
         }
@@ -51,7 +52,7 @@ const syncOrgReposWithStats = async (req, res) => {
                             });
 
                             console.log('Granted Scopes:', headers['x-oauth-scopes']);
-                            console.log("data", data);
+
                             return data;
                         } catch (err) {
                             console.error(`GitHub API error (${url}):`, err.response?.data || err.message);

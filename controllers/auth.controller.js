@@ -49,7 +49,7 @@ const checkAuthStatus = async (req, res) => {
         }
 
         const { _id, username, email, connectedAt } = user;
-
+        console.log("User found:", { _id, username, email, connectedAt });
         return res.status(200).json({
             message: "Authentication status verified",
             isAuthenticated: true,
