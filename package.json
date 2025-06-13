@@ -23,6 +23,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@octokit/oauth-app": "^8.0.1",
     "@octokit/rest": "^22.0.0",
     "axios": "^1.9.0",
     "cookie-parser": "^1.4.7",

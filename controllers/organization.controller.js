@@ -40,21 +40,31 @@ const getAllOrganizations = async (req, res) => {
 
         console.log('Organizations:', orgs);
 
-        const organizations = await Organization.insertMany(
-            orgs.map(({ id, login, avatar_url, description, url }) => ({
-                githubId: id,
-                login,
-                userId: user._id,
-                avatar_url,
-                description,
-                url
-            })),
-            {
-                ordered: false
+        try {
+            await Organization.insertMany(
+                orgs.map(({ id, login, avatar_url, description, url }) => ({
+                    githubId: id,
+                    login,
+                    userId: user._id,
+                    avatar_url,
+                    description,
+                    url
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
             }
-        );
+            console.warn('Some duplicate organizations were skipped.');
+        }
+        const organizations = await Organization.find({ userId: user._id });
 
-        res.status(200).json({ organizations });
+        return res.status(200).json({ organizations });
+
     } catch (error) {
         console.error('Failed to fetch organizations:', error.message);
         res.status(500).json({ message: 'Failed to fetch organizations', error: error.message });
@@ -103,23 +113,30 @@ const getAllOrganizationRepositories = async (req, res) => {
         }
 
         console.log('Fetched Repositories:', repos.length);
-
-        const insertedRepos = await Repository.insertMany(
-            repos.map(({ id, name, full_name, html_url, description, visibility }) => ({
-                githubId: id,
-                name,
-                fullName: full_name,
-                organizationId: organization._id,
-                url: html_url,
-                description,
-                visibility
-            })),
-            {
-                ordered: false
+        try {
+            const insertedRepos = await Repository.insertMany(
+                repos.map(({ id, name, full_name, html_url, description, visibility }) => ({
+                    githubId: id,
+                    name,
+                    fullName: full_name,
+                    organizationId: organization._id,
+                    url: html_url,
+                    description,
+                    visibility
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
             }
-        );
-
-        return res.status(200).json({ repos: insertedRepos });
+            console.warn('Some duplicate organizations were skipped.');
+        }
+        const allRepos = await Repository.find({ organizationId: organization._id });
+        return res.status(200).json({ repos: allRepos });
     } catch (error) {
         console.error('Error syncing GitHub repos:', error.message);
         if (error.writeErrors) {
