@@ -110,101 +110,110 @@ const getAllRepoCommits = async (req, res) => {
             owner: repo.fullName.split('/')[0],
             repo: repo.name,
         });
-        console.log('Commits:', commits);
-
-        /*
-        {
-    sha: '997c7bc930304142b3af37bcb21599181124aeb4',
-    node_id: 'C_kwDOO4yn5toAKDk5N2M3YmM5MzAzMDQxNDJiM2FmMzdiY2IyMTU5OTE4MTEyNGFlYjQ',
-    commit: {
-      author: {"name":"Ruslan Lesiutin","email":"rdlesyutin@gmail.com","date":"2025-06-09T17:25:19Z"},
-      committer: {"name":"GitHub","email":"noreply@github.com","date":"2025-06-09T17:25:19Z"},
-      message: '[DevTools] Get source location from structured callsites in prepareStackTrace (#33143)\n' +
-        '\n' +
-        'When we get the source location for "View source for this element" we\n' +
-        'should be using the enclosing function of the callsite of the child. So\n' +
-        "that we don't just point to some random line within the component.\n" +
-        '\n' +
-        'This is similar to the technique in #33136.\n' +
-        '\n' +
-        'This technique is now really better than the fake throw technique, when\n' +
-        "available. So I now favor the owner technique. The only problem it's\n" +
-        "only available in DEV and only if it has a child that's owned (and not\n" +
-        'filtered).\n' +
-        '\n' +
-        "We could implement this same technique for the error that's thrown in\n" +
-        "the fake throwing solution. However, we really shouldn't need that at\n" +
-        'all because for client components we should be able to call\n' +
-        '`inspect(fn)` at least in Chrome which is even better.',
-      tree: [Object],
-      url: 'https://api.github.com/repos/srediotestorganization/react/git/commits/997c7bc930304142b3af37bcb21599181124aeb4',
-      comment_count: 0,
-      verification: [Object]
-    },
-    url: 'https://api.github.com/repos/srediotestorganization/react/commits/997c7bc930304142b3af37bcb21599181124aeb4',
-    html_url: 'https://github.com/srediotestorganization/react/commit/997c7bc930304142b3af37bcb21599181124aeb4',
-    comments_url: 'https://api.github.com/repos/srediotestorganization/react/commits/997c7bc930304142b3af37bcb21599181124aeb4/comments',
-    author: {
-      login: 'sebmarkbage',
-      id: 63648,
-      node_id: 'MDQ6VXNlcjYzNjQ4',
-      avatar_url: 'https://avatars.githubusercontent.com/u/63648?v=4',
-      gravatar_id: '',
-      url: 'https://api.github.com/users/sebmarkbage',
-      html_url: 'https://github.com/sebmarkbage',
-      followers_url: 'https://api.github.com/users/sebmarkbage/followers',
-      following_url: 'https://api.github.com/users/sebmarkbage/following{/other_user}',
-      gists_url: 'https://api.github.com/users/sebmarkbage/gists{/gist_id}',
-      starred_url: 'https://api.github.com/users/sebmarkbage/starred{/owner}{/repo}',
-      subscriptions_url: 'https://api.github.com/users/sebmarkbage/subscriptions',
-      organizations_url: 'https://api.github.com/users/sebmarkbage/orgs',
-      repos_url: 'https://api.github.com/users/sebmarkbage/repos',
-      events_url: 'https://api.github.com/users/sebmarkbage/events{/privacy}',
-      received_events_url: 'https://api.github.com/users/sebmarkbage/received_events',
-      type: 'User',
-      user_view_type: 'public',
-      site_admin: false
-    },
-    committer: {
-      login: 'web-flow',
-      id: 19864447,
-      node_id: 'MDQ6VXNlcjE5ODY0NDQ3',
-      avatar_url: 'https://avatars.githubusercontent.com/u/19864447?v=4',
-      gravatar_id: '',
-      url: 'https://api.github.com/users/web-flow',
-      html_url: 'https://github.com/web-flow',
-      followers_url: 'https://api.github.com/users/web-flow/followers',
-      following_url: 'https://api.github.com/users/web-flow/following{/other_user}',
-      gists_url: 'https://api.github.com/users/web-flow/gists{/gist_id}',
-      starred_url: 'https://api.github.com/users/web-flow/starred{/owner}{/repo}',
-      subscriptions_url: 'https://api.github.com/users/web-flow/subscriptions',
-      organizations_url: 'https://api.github.com/users/web-flow/orgs',
-      repos_url: 'https://api.github.com/users/web-flow/repos',
-      events_url: 'https://api.github.com/users/web-flow/events{/privacy}',
-      received_events_url: 'https://api.github.com/users/web-flow/received_events',
-      type: 'User',
-      user_view_type: 'public',
-      site_admin: false
-    },
-    parents: [ [Object] ]
-  },
-        */
-        const saved = await Commit.insertMany(
-            commits.map(({ sha, commit, author, committer, url }) => ({
-                sha,
-                repoId: repo._id,
-                message: commit.message,
-                author: author?.login || null,
-                committer: committer?.login || null,
-                date: commit.author.date,
-                url
-            })),
+        try {
+            /*
             {
-                ordered: false
-            }
-        );
+        sha: '997c7bc930304142b3af37bcb21599181124aeb4',
+        node_id: 'C_kwDOO4yn5toAKDk5N2M3YmM5MzAzMDQxNDJiM2FmMzdiY2IyMTU5OTE4MTEyNGFlYjQ',
+        commit: {
+          author: {"name":"Ruslan Lesiutin","email":"rdlesyutin@gmail.com","date":"2025-06-09T17:25:19Z"},
+          committer: {"name":"GitHub","email":"noreply@github.com","date":"2025-06-09T17:25:19Z"},
+          message: '[DevTools] Get source location from structured callsites in prepareStackTrace (#33143)\n' +
+            '\n' +
+            'When we get the source location for "View source for this element" we\n' +
+            'should be using the enclosing function of the callsite of the child. So\n' +
+            "that we don't just point to some random line within the component.\n" +
+            '\n' +
+            'This is similar to the technique in #33136.\n' +
+            '\n' +
+            'This technique is now really better than the fake throw technique, when\n' +
+            "available. So I now favor the owner technique. The only problem it's\n" +
+            "only available in DEV and only if it has a child that's owned (and not\n" +
+            'filtered).\n' +
+            '\n' +
+            "We could implement this same technique for the error that's thrown in\n" +
+            "the fake throwing solution. However, we really shouldn't need that at\n" +
+            'all because for client components we should be able to call\n' +
+            '`inspect(fn)` at least in Chrome which is even better.',
+          tree: [Object],
+          url: 'https://api.github.com/repos/srediotestorganization/react/git/commits/997c7bc930304142b3af37bcb21599181124aeb4',
+          comment_count: 0,
+          verification: [Object]
+        },
+        url: 'https://api.github.com/repos/srediotestorganization/react/commits/997c7bc930304142b3af37bcb21599181124aeb4',
+        html_url: 'https://github.com/srediotestorganization/react/commit/997c7bc930304142b3af37bcb21599181124aeb4',
+        comments_url: 'https://api.github.com/repos/srediotestorganization/react/commits/997c7bc930304142b3af37bcb21599181124aeb4/comments',
+        author: {
+          login: 'sebmarkbage',
+          id: 63648,
+          node_id: 'MDQ6VXNlcjYzNjQ4',
+          avatar_url: 'https://avatars.githubusercontent.com/u/63648?v=4',
+          gravatar_id: '',
+          url: 'https://api.github.com/users/sebmarkbage',
+          html_url: 'https://github.com/sebmarkbage',
+          followers_url: 'https://api.github.com/users/sebmarkbage/followers',
+          following_url: 'https://api.github.com/users/sebmarkbage/following{/other_user}',
+          gists_url: 'https://api.github.com/users/sebmarkbage/gists{/gist_id}',
+          starred_url: 'https://api.github.com/users/sebmarkbage/starred{/owner}{/repo}',
+          subscriptions_url: 'https://api.github.com/users/sebmarkbage/subscriptions',
+          organizations_url: 'https://api.github.com/users/sebmarkbage/orgs',
+          repos_url: 'https://api.github.com/users/sebmarkbage/repos',
+          events_url: 'https://api.github.com/users/sebmarkbage/events{/privacy}',
+          received_events_url: 'https://api.github.com/users/sebmarkbage/received_events',
+          type: 'User',
+          user_view_type: 'public',
+          site_admin: false
+        },
+        committer: {
+          login: 'web-flow',
+          id: 19864447,
+          node_id: 'MDQ6VXNlcjE5ODY0NDQ3',
+          avatar_url: 'https://avatars.githubusercontent.com/u/19864447?v=4',
+          gravatar_id: '',
+          url: 'https://api.github.com/users/web-flow',
+          html_url: 'https://github.com/web-flow',
+          followers_url: 'https://api.github.com/users/web-flow/followers',
+          following_url: 'https://api.github.com/users/web-flow/following{/other_user}',
+          gists_url: 'https://api.github.com/users/web-flow/gists{/gist_id}',
+          starred_url: 'https://api.github.com/users/web-flow/starred{/owner}{/repo}',
+          subscriptions_url: 'https://api.github.com/users/web-flow/subscriptions',
+          organizations_url: 'https://api.github.com/users/web-flow/orgs',
+          repos_url: 'https://api.github.com/users/web-flow/repos',
+          events_url: 'https://api.github.com/users/web-flow/events{/privacy}',
+          received_events_url: 'https://api.github.com/users/web-flow/received_events',
+          type: 'User',
+          user_view_type: 'public',
+          site_admin: false
+        },
+        parents: [ [Object] ]
+        },
+            */
+            const saved = await Commit.insertMany(
+                commits.map(({ sha, commit, author, committer, url }) => ({
+                    sha,
+                    repoId: repo._id,
+                    message: commit.message,
+                    author: author?.login || null,
+                    committer: committer?.login || null,
+                    date: commit.author.date,
+                    url
+                })),
+                {
+                    ordered: false
+                }
+            );
 
-        return res.status(200).json({ commits: saved });
+        } catch (err) {
+
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
+            }
+            console.warn('Some duplicate organizations were skipped.');
+        }
+        const commitsDB = await Commit.find({ repoId: repo._id }).sort({ date: -1 });
+
+        return res.status(200).json({ commits: commitsDB });
     } catch (error) {
         console.error('Commits fetch failed:', error.message);
         res.status(500).json({ message: 'Failed to fetch commits', error: error.message });
