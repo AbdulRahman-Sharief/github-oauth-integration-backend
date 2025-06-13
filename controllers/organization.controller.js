@@ -191,21 +191,32 @@ const getAllOrganizationMembers = async (req, res) => {
     site_admin: false
   }
         */
-        const saved = await OrganizationMember.insertMany(
-            members.map(({ url, id, login, avatar_url, type }) => ({
-                url,
-                githubId: id,
-                organizationId: organization._id,
-                login,
-                avatar_url,
-                type,
-            })),
-            {
-                ordered: false
-            }
-        );
 
-        return res.status(200).json({ users: saved });
+        try {
+
+            const saved = await OrganizationMember.insertMany(
+                members.map(({ url, id, login, avatar_url, type }) => ({
+                    url,
+                    githubId: id,
+                    organizationId: organization._id,
+                    login,
+                    avatar_url,
+                    type,
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
+            }
+            console.warn('Some duplicate issues were skipped.');
+        }
+        const membersDB = await OrganizationMember.find({ organizationId: organization._id });
+        return res.status(200).json({ members: membersDB });
     } catch (error) {
         console.error('Org users fetch failed:', error.message);
         res.status(500).json({ message: 'Failed to fetch organization users', error: error.message });

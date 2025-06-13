@@ -354,25 +354,36 @@ const getAllRepoPulls = async (req, res) => {
   }
         
         */
-        const saved = await PullRequest.insertMany(
-            pulls.map(({ url, id, title, state, user, created_at, updated_at, closed_at, merged_at }) => ({
-                url,
-                githubId: id,
-                repoId: repo._id,
-                title,
-                state,
-                user: user?.login,
-                pullCreatedAt: created_at,
-                pullUpdatedAt: updated_at,
-                pullClosedAt: closed_at,
-                pullMergedAt: merged_at
-            })),
-            {
-                ordered: false
-            }
-        );
+        try {
 
-        res.status(200).json({ pulls: saved });
+            const saved = await PullRequest.insertMany(
+                pulls.map(({ url, id, title, state, user, created_at, updated_at, closed_at, merged_at }) => ({
+                    url,
+                    githubId: id,
+                    repoId: repo._id,
+                    title,
+                    state,
+                    user: user?.login,
+                    pullCreatedAt: created_at,
+                    pullUpdatedAt: updated_at,
+                    pullClosedAt: closed_at,
+                    pullMergedAt: merged_at
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
+            }
+            console.warn('Some duplicate issues were skipped.');
+        }
+        const pullsDB = await PullRequest.find({ repoId: repo._id }).sort({ pullCreatedAt: -1 });
+
+        res.status(200).json({ pulls: pullsDB });
     } catch (error) {
         console.error('PRs fetch failed:', error.message);
         res.status(500).json({ message: 'Failed to fetch pull requests', error: error.message });
@@ -473,27 +484,37 @@ const getAllRepoIssues = async (req, res) => {
         }
         */
 
+        try {
 
-        const saved = await Issue.insertMany(
-            issues.map(({ url, id, number, title, state, user, created_at, updated_at, closed_at }) => ({
-                url,
-                githubId: id,
-                repoId: repo._id,
-                number,
-                title,
-                state,
-                user: user?.login,
-                issueCreatedAt: created_at,
-                issueUpdatedAt: updated_at,
-                issueClosedAt: closed_at
+            const saved = await Issue.insertMany(
+                issues.map(({ url, id, number, title, state, user, created_at, updated_at, closed_at }) => ({
+                    url,
+                    githubId: id,
+                    repoId: repo._id,
+                    number,
+                    title,
+                    state,
+                    user: user?.login,
+                    issueCreatedAt: created_at,
+                    issueUpdatedAt: updated_at,
+                    issueClosedAt: closed_at
 
-            })),
-            {
-                ordered: false
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
             }
-        );
+            console.warn('Some duplicate issues were skipped.');
+        }
 
-        res.status(200).json({ issues: saved });
+        const issuesDB = await Issue.find({ repoId: repo._id }).sort({ issueCreatedAt: -1 });
+        res.status(200).json({ issues: issuesDB });
     } catch (error) {
         console.error('Issues fetch failed:', error.message);
         res.status(500).json({ message: 'Failed to fetch issues', error: error.message });
@@ -558,21 +579,33 @@ const getAllIssueChangelogs = async (req, res) => {
     performed_via_github_app: null
   }
         */
-        const saved = await Changelog.insertMany(
-            timeline.map(({ id, url, event, created_at, actor }) => ({
-                githubId: id,
-                repoId: repo._id,
-                issueNumber,
-                url,
-                event,
-                actor: actor?.login,
-                changeLogCreatedAt: created_at
-            })),
-            {
-                ordered: false
+
+        try {
+
+            const saved = await Changelog.insertMany(
+                timeline.map(({ id, url, event, created_at, actor }) => ({
+                    githubId: id,
+                    repoId: repo._id,
+                    issueNumber,
+                    url,
+                    event,
+                    actor: actor?.login,
+                    changeLogCreatedAt: created_at
+                })),
+                {
+                    ordered: false
+                }
+            );
+        } catch (err) {
+
+            if (err.code !== 11000) {
+                // Not a duplicate key error
+                throw err;
             }
-        );
-        res.status(200).json({ changelogs: saved });
+            console.warn('Some duplicate issues were skipped.');
+        }
+        const changeLogsDB = await Changelog.find({ repoId: repo._id, issueNumber }).sort({ changeLogCreatedAt: -1 });
+        res.status(200).json({ changelogs: changeLogsDB });
     } catch (error) {
         console.error('Issue changelogs fetch failed:', error.message);
         res.status(500).json({ message: 'Failed to fetch changelogs', error: error.message });
